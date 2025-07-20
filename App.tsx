@@ -198,6 +198,16 @@ const styles = {
     width: "100%",
     boxSizing: "border-box" as const,
   },
+  select: {
+    padding: "12px 16px",
+    border: "2px solid #e2e8f0",
+    borderRadius: "10px",
+    fontSize: "14px",
+    width: "100%",
+    boxSizing: "border-box" as const,
+    background: "white",
+    cursor: "pointer",
+  },
   clearButton: {
     padding: "12px 20px",
     background: "#f7fafc",
@@ -219,6 +229,16 @@ const styles = {
     padding: "25px",
     boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
     transition: "transform 0.2s ease, box-shadow 0.2s ease",
+    cursor: "pointer",
+  },
+  studentCardExpanded: {
+    background: "white",
+    borderRadius: "15px",
+    padding: "25px",
+    boxShadow: "0 8px 25px rgba(0,0,0,0.15)",
+    transition: "transform 0.2s ease, box-shadow 0.2s ease",
+    cursor: "pointer",
+    transform: "translateY(-2px)",
   },
   studentHeader: {
     display: "flex",
@@ -270,14 +290,15 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    padding: "8px 0",
+    padding: "4px 0",
     borderBottom: "1px solid #f7fafc",
+    gap: "8px",
   },
   detailLabel: {
     fontSize: "13px",
     color: "#4a5568",
     fontWeight: "500",
-    minWidth: "120px",
+    minWidth: "100px",
     flexShrink: 0,
   },
   detailValue: {
@@ -286,6 +307,17 @@ const styles = {
     fontWeight: "500",
     textAlign: "right" as const,
     wordBreak: "break-word" as const,
+    flex: 1,
+  },
+  link: {
+    color: "#667eea",
+    textDecoration: "underline",
+    cursor: "pointer",
+  },
+  expandIcon: {
+    fontSize: "18px",
+    color: "#667eea",
+    marginLeft: "auto",
   },
   loading: {
     display: "flex",
@@ -318,6 +350,36 @@ const styles = {
     fontSize: "14px",
     fontWeight: "500",
   },
+};
+
+// Utility functions
+const encryptAadhar = (aadhar: string) => {
+  if (!aadhar || aadhar.length < 4) return aadhar;
+  return "*".repeat(aadhar.length - 4) + aadhar.slice(-4);
+};
+
+const getUniqueValues = (data: any[], columnIndex: number) => {
+  const values = data
+    .map((row) => row[columnIndex])
+    .filter((value) => value && value.trim())
+    .map((value) => value.trim());
+  return [...new Set(values)].sort();
+};
+
+const parsePhotoUrls = (photoString: string) => {
+  if (!photoString) return [];
+  // Split by common separators, clean up, and filter valid URLs
+  const urls = photoString
+    .split(/[,;\n\r\t\|]/)
+    .map((url) => url.trim())
+    .filter(
+      (url) =>
+        url &&
+        url.length > 10 &&
+        (url.startsWith("http") || url.startsWith("https"))
+    )
+    .slice(0, 3); // Limit to first 3 photos to avoid clutter
+  return urls;
 };
 
 const LoadingSpinner = () => (
@@ -360,197 +422,315 @@ const ErrorMessage = ({
   </div>
 );
 
-const StudentCard = ({ student }: { student: any[] }) => {
+const StudentCard = ({
+  student,
+  isExpanded,
+  onToggle,
+}: {
+  student: any[];
+  isExpanded: boolean;
+  onToggle: () => void;
+}) => {
   const fullName = student[COLUMNS.FULL_NAME] || "Unknown Student";
   const registerNumber = student[COLUMNS.REGISTER_NUMBER] || "N/A";
+  const gender = student[COLUMNS.GENDER] || "N/A";
   const degree = student[COLUMNS.DEGREE] || "N/A";
   const classSection = student[COLUMNS.CLASS_SECTION] || "N/A";
   const isHosteller = (student[COLUMNS.DAY_SCHOLAR_HOSTELLER] || "")
     .toLowerCase()
     .includes("hostel");
 
+  const gpsLocation = student[COLUMNS.GPS_LOCATION];
+  const linkedinProfile = student[COLUMNS.LINKEDIN_PROFILE];
+  const photoUrls = parsePhotoUrls(student[COLUMNS.PHOTO]);
+
+  const handleGpsClick = () => {
+    if (gpsLocation) {
+      window.open(
+        `https://maps.google.com/?q=${encodeURIComponent(gpsLocation)}`,
+        "_blank"
+      );
+    }
+  };
+
+  const handleLinkedinClick = () => {
+    if (linkedinProfile) {
+      let url = linkedinProfile;
+      if (!url.startsWith("http")) {
+        url = "https://" + url;
+      }
+      window.open(url, "_blank");
+    }
+  };
+
+  const handlePhotoClick = (photoUrl: string) => {
+    window.open(photoUrl, "_blank");
+  };
+
   return (
-    <div style={styles.studentCard} className="student-card">
+    <div
+      style={isExpanded ? styles.studentCardExpanded : styles.studentCard}
+      className="student-card"
+      onClick={onToggle}
+    >
       <div style={styles.studentHeader}>
         <div style={styles.avatar}>{fullName[0]?.toUpperCase() || "U"}</div>
         <div style={{ flex: 1 }}>
           <h3 style={styles.studentName}>{fullName}</h3>
           <p style={styles.studentId}>Reg: {registerNumber}</p>
-          <p style={styles.studentDegree}>
-            {degree} - {classSection}
-          </p>
+          <p style={styles.studentId}>Gender: {gender}</p>
+          {isExpanded && (
+            <p style={styles.studentDegree}>
+              {degree} - {classSection}
+            </p>
+          )}
         </div>
+        <div style={styles.expandIcon}>{isExpanded ? "🔽" : "▶️"}</div>
       </div>
 
-      {/* Basic Information */}
-      <div style={styles.sectionTitle}>📋 Basic Information</div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Email</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.EMAIL_ADDRESS] || "-"}
-        </span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Gender</span>
-        <span style={styles.detailValue}>{student[COLUMNS.GENDER] || "-"}</span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>DOB</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.DATE_OF_BIRTH] || "-"}
-        </span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Blood Group</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.BLOOD_GROUP] || "-"}
-        </span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Community</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.COMMUNITY] || "-"}
-        </span>
-      </div>
-
-      {/* Academic Details */}
-      <div style={styles.sectionTitle}>🎓 Academic Details</div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Year of Joining</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.YEAR_OF_JOINING] || "-"}
-        </span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Current CGPA</span>
-        <span style={styles.detailValue}>{student[COLUMNS.CGPA] || "-"}</span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>10th Percentage</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.CLASS_10_PERCENTAGE]
-            ? `${student[COLUMNS.CLASS_10_PERCENTAGE]}%`
-            : "-"}
-        </span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>12th Percentage</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.CLASS_12_PERCENTAGE]
-            ? `${student[COLUMNS.CLASS_12_PERCENTAGE]}%`
-            : "-"}
-        </span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Standing Arrears</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.STANDING_ARREARS] || "0"}
-        </span>
-      </div>
-
-      {/* Contact Details */}
-      <div style={styles.sectionTitle}>📞 Contact Details</div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Phone</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.PHONE_NUMBER] || "-"}
-        </span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>WhatsApp</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.WHATSAPP_NUMBER] || "-"}
-        </span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>College Email</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.COLLEGE_MAIL] || "-"}
-        </span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Personal Email</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.PERSONAL_MAIL] || "-"}
-        </span>
-      </div>
-
-      {/* Family Details */}
-      <div style={styles.sectionTitle}>👨‍👩‍👧‍👦 Family Details</div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Father's Name</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.FATHER_NAME] || "-"}
-        </span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Father's Phone</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.FATHER_PHONE] || "-"}
-        </span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Mother's Name</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.MOTHER_NAME] || "-"}
-        </span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Mother's Phone</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.MOTHER_PHONE] || "-"}
-        </span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Tutor Name</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.TUTOR_NAME] || "-"}
-        </span>
-      </div>
-
-      {/* Location & Transport */}
-      <div style={styles.sectionTitle}>🏠 Accommodation & Transport</div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Type</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.DAY_SCHOLAR_HOSTELLER] || "-"}
-        </span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Transport</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.REACHING_CAMPUS] || "-"}
-        </span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>City</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.CITY_NAME] || "-"}
-        </span>
-      </div>
-      <div style={styles.detailRow}>
-        <span style={styles.detailLabel}>Mother Tongue</span>
-        <span style={styles.detailValue}>
-          {student[COLUMNS.MOTHER_TONGUE] || "-"}
-        </span>
-      </div>
-
-      {/* Hostel Details (only for hostellers) */}
-      {isHosteller && (
+      {isExpanded && (
         <>
-          <div style={styles.sectionTitle}>🏨 Hostel Details</div>
+          {/* Basic Information */}
+          <div style={styles.sectionTitle}>📋 Basic Information</div>
           <div style={styles.detailRow}>
-            <span style={styles.detailLabel}>Hostel Name</span>
+            <span style={styles.detailLabel}>Email</span>
             <span style={styles.detailValue}>
-              {student[COLUMNS.HOSTEL_NAME] || "-"}
+              {student[COLUMNS.EMAIL_ADDRESS] || "-"}
             </span>
           </div>
           <div style={styles.detailRow}>
-            <span style={styles.detailLabel}>Room Number</span>
+            <span style={styles.detailLabel}>DOB</span>
             <span style={styles.detailValue}>
-              {student[COLUMNS.ROOM_NUMBER] || "-"}
+              {student[COLUMNS.DATE_OF_BIRTH] || "-"}
             </span>
           </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Blood Group</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.BLOOD_GROUP] || "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Community</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.COMMUNITY] || "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Aadhar No</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.AADHAR_NUMBER]
+                ? encryptAadhar(student[COLUMNS.AADHAR_NUMBER])
+                : "-"}
+            </span>
+          </div>
+
+          {/* Academic Details */}
+          <div style={styles.sectionTitle}>🎓 Academic Details</div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Year of Joining</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.YEAR_OF_JOINING] || "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Current CGPA</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.CGPA] || "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>10th %</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.CLASS_10_PERCENTAGE]
+                ? `${student[COLUMNS.CLASS_10_PERCENTAGE]}%`
+                : "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>12th %</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.CLASS_12_PERCENTAGE]
+                ? `${student[COLUMNS.CLASS_12_PERCENTAGE]}%`
+                : "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Standing Arrears</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.STANDING_ARREARS] || "0"}
+            </span>
+          </div>
+
+          {/* Contact Details */}
+          <div style={styles.sectionTitle}>📞 Contact Details</div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Phone</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.PHONE_NUMBER] || "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>WhatsApp</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.WHATSAPP_NUMBER] || "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>College Email</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.COLLEGE_MAIL] || "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Personal Email</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.PERSONAL_MAIL] || "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>LinkedIn</span>
+            <span style={styles.detailValue}>
+              {linkedinProfile ? (
+                <span
+                  style={styles.link}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLinkedinClick();
+                  }}
+                >
+                  View Profile
+                </span>
+              ) : (
+                "-"
+              )}
+            </span>
+          </div>
+
+          {/* Family Details */}
+          <div style={styles.sectionTitle}>👨‍👩‍👧‍👦 Family Details</div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Father's Name</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.FATHER_NAME] || "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Father's Phone</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.FATHER_PHONE] || "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Mother's Name</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.MOTHER_NAME] || "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Mother's Phone</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.MOTHER_PHONE] || "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Tutor Name</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.TUTOR_NAME] || "-"}
+            </span>
+          </div>
+
+          {/* Location & Transport */}
+          <div style={styles.sectionTitle}>🏠 Accommodation & Transport</div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Type</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.DAY_SCHOLAR_HOSTELLER] || "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Transport</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.REACHING_CAMPUS] || "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>City</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.CITY_NAME] || "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Mother Tongue</span>
+            <span style={styles.detailValue}>
+              {student[COLUMNS.MOTHER_TONGUE] || "-"}
+            </span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>GPS Location</span>
+            <span style={styles.detailValue}>
+              {gpsLocation ? (
+                <span
+                  style={styles.link}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleGpsClick();
+                  }}
+                >
+                  View on Map
+                </span>
+              ) : (
+                "-"
+              )}
+            </span>
+          </div>
+
+          {/* Hostel Details (only for hostellers) */}
+          {isHosteller && (
+            <>
+              <div style={styles.sectionTitle}>🏨 Hostel Details</div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>Hostel Name</span>
+                <span style={styles.detailValue}>
+                  {student[COLUMNS.HOSTEL_NAME] || "-"}
+                </span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>Room Number</span>
+                <span style={styles.detailValue}>
+                  {student[COLUMNS.ROOM_NUMBER] || "-"}
+                </span>
+              </div>
+            </>
+          )}
+
+          {/* Photos */}
+          {photoUrls.length > 0 && (
+            <>
+              <div style={styles.sectionTitle}>📸 Photos</div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>
+                  Photos ({photoUrls.length})
+                </span>
+                <span style={styles.detailValue}>
+                  {photoUrls.map((photoUrl, index) => (
+                    <span key={index}>
+                      <span
+                        style={{ ...styles.link, marginRight: "8px" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePhotoClick(photoUrl);
+                        }}
+                      >
+                        Photo {index + 1}
+                      </span>
+                      {index < photoUrls.length - 1 && " | "}
+                    </span>
+                  ))}
+                </span>
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
@@ -629,6 +809,7 @@ export default function Dashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
 
   const loadData = async () => {
     if (!isAdmin) return;
@@ -659,6 +840,16 @@ export default function Dashboard() {
     } else {
       alert("Incorrect password. Please try again.");
     }
+  };
+
+  const toggleCardExpansion = (index: number) => {
+    const newExpanded = new Set(expandedCards);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedCards(newExpanded);
   };
 
   const filterData = (data: any[]) => {
@@ -692,6 +883,9 @@ export default function Dashboard() {
   }
 
   const filteredData = filterData(personalData);
+  const uniqueDegrees = getUniqueValues(personalData, COLUMNS.DEGREE);
+  const uniqueClasses = getUniqueValues(personalData, COLUMNS.CLASS_SECTION);
+  const uniqueCommunities = getUniqueValues(personalData, COLUMNS.COMMUNITY);
 
   return (
     <div style={styles.dashboardContainer}>
@@ -756,37 +950,56 @@ export default function Dashboard() {
               onChange={(e) => setSearchName(e.target.value)}
             />
 
-            <input
-              style={styles.searchInput}
-              placeholder="Filter by degree..."
+            <select
+              style={styles.select}
               value={filters.degree}
               onChange={(e) =>
                 setFilters({ ...filters, degree: e.target.value })
               }
-            />
+            >
+              <option value="">All Degrees</option>
+              {uniqueDegrees.map((degree) => (
+                <option key={degree} value={degree}>
+                  {degree}
+                </option>
+              ))}
+            </select>
 
-            <input
-              style={styles.searchInput}
-              placeholder="Filter by class & section..."
+            <select
+              style={styles.select}
               value={filters.class}
               onChange={(e) =>
                 setFilters({ ...filters, class: e.target.value })
               }
-            />
+            >
+              <option value="">All Classes</option>
+              {uniqueClasses.map((cls) => (
+                <option key={cls} value={cls}>
+                  {cls}
+                </option>
+              ))}
+            </select>
 
-            <input
-              style={styles.searchInput}
-              placeholder="Filter by community..."
+            <select
+              style={styles.select}
               value={filters.community}
               onChange={(e) =>
                 setFilters({ ...filters, community: e.target.value })
               }
-            />
+            >
+              <option value="">All Communities</option>
+              {uniqueCommunities.map((community) => (
+                <option key={community} value={community}>
+                  {community}
+                </option>
+              ))}
+            </select>
 
             <button
               onClick={() => {
                 setFilters({ degree: "", class: "", community: "" });
                 setSearchName("");
+                setExpandedCards(new Set());
               }}
               style={styles.clearButton}
             >
@@ -855,7 +1068,12 @@ export default function Dashboard() {
               ) : (
                 <div style={styles.studentsGrid}>
                   {filteredData.map((student, idx) => (
-                    <StudentCard key={idx} student={student} />
+                    <StudentCard
+                      key={idx}
+                      student={student}
+                      isExpanded={expandedCards.has(idx)}
+                      onToggle={() => toggleCardExpansion(idx)}
+                    />
                   ))}
                 </div>
               )}
