@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { RegionChart, AccommodationChart } from './components/Charts';
+import AcademicDetails from './components/AcademicDetails';
+import CGPAAnalysis from './components/CGPAAnalysis';
 
 // Google Sheets API Configuration
 const API_KEY = "AIzaSyBItOEnfIr0jZvqwfA31PCZuF-BK3-OqzA";
@@ -24,6 +27,7 @@ interface Filters {
   degree: string;
   class: string;
   community: string;
+  city: string;
 }
 
 // Column mapping based on your sheet structure
@@ -288,24 +292,23 @@ const styles = {
   },
   detailRow: {
     display: "flex",
-    justifyContent: "space-between",
     alignItems: "flex-start",
     padding: "4px 0",
     borderBottom: "1px solid #f7fafc",
-    gap: "8px",
+    gap: "12px",
   },
   detailLabel: {
     fontSize: "13px",
     color: "#4a5568",
     fontWeight: "500",
-    minWidth: "100px",
+    minWidth: "140px",
     flexShrink: 0,
   },
   detailValue: {
     fontSize: "13px",
     color: "#1a202c",
     fontWeight: "500",
-    textAlign: "right" as const,
+    textAlign: "left" as const,
     wordBreak: "break-word" as const,
     flex: 1,
   },
@@ -350,6 +353,17 @@ const styles = {
     fontSize: "14px",
     fontWeight: "500",
   },
+  navButton: {
+    padding: "10px 20px",
+    background: "#667eea",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: "500",
+    marginRight: "10px",
+  },
 };
 
 // Utility functions
@@ -360,9 +374,9 @@ const encryptAadhar = (aadhar: string) => {
 
 const getUniqueValues = (data: any[], columnIndex: number) => {
   const values = data
-    .map((row) => row[columnIndex])
-    .filter((value) => value && value.trim())
-    .map((value) => value.trim());
+    .map(row => row[columnIndex])
+    .filter(value => value && value.trim())
+    .map(value => value.trim());
   return [...new Set(values)].sort();
 };
 
@@ -371,13 +385,8 @@ const parsePhotoUrls = (photoString: string) => {
   // Split by common separators, clean up, and filter valid URLs
   const urls = photoString
     .split(/[,;\n\r\t\|]/)
-    .map((url) => url.trim())
-    .filter(
-      (url) =>
-        url &&
-        url.length > 10 &&
-        (url.startsWith("http") || url.startsWith("https"))
-    )
+    .map(url => url.trim())
+    .filter(url => url && url.length > 10 && (url.startsWith('http') || url.startsWith('https')))
     .slice(0, 3); // Limit to first 3 photos to avoid clutter
   return urls;
 };
@@ -422,12 +431,12 @@ const ErrorMessage = ({
   </div>
 );
 
-const StudentCard = ({
-  student,
-  isExpanded,
-  onToggle,
-}: {
-  student: any[];
+const StudentCard = ({ 
+  student, 
+  isExpanded, 
+  onToggle 
+}: { 
+  student: any[]; 
   isExpanded: boolean;
   onToggle: () => void;
 }) => {
@@ -443,38 +452,61 @@ const StudentCard = ({
   const gpsLocation = student[COLUMNS.GPS_LOCATION];
   const linkedinProfile = student[COLUMNS.LINKEDIN_PROFILE];
   const photoUrls = parsePhotoUrls(student[COLUMNS.PHOTO]);
+  const firstPhotoUrl = photoUrls.length > 0 ? photoUrls[0] : null;
 
   const handleGpsClick = () => {
     if (gpsLocation) {
-      window.open(
-        `https://maps.google.com/?q=${encodeURIComponent(gpsLocation)}`,
-        "_blank"
-      );
+      window.open(`https://maps.google.com/?q=${encodeURIComponent(gpsLocation)}`, '_blank');
     }
   };
 
   const handleLinkedinClick = () => {
     if (linkedinProfile) {
       let url = linkedinProfile;
-      if (!url.startsWith("http")) {
-        url = "https://" + url;
+      if (!url.startsWith('http')) {
+        url = 'https://' + url;
       }
-      window.open(url, "_blank");
+      window.open(url, '_blank');
     }
   };
 
   const handlePhotoClick = (photoUrl: string) => {
-    window.open(photoUrl, "_blank");
+    window.open(photoUrl, '_blank');
   };
 
   return (
-    <div
-      style={isExpanded ? styles.studentCardExpanded : styles.studentCard}
+    <div 
+      style={isExpanded ? styles.studentCardExpanded : styles.studentCard} 
       className="student-card"
       onClick={onToggle}
     >
       <div style={styles.studentHeader}>
-        <div style={styles.avatar}>{fullName[0]?.toUpperCase() || "U"}</div>
+        <div style={styles.avatar}>
+          {firstPhotoUrl ? (
+            <img 
+              src={firstPhotoUrl} 
+              alt={fullName}
+              style={{
+                width: "100%",
+                height: "100%",
+                borderRadius: "50%",
+                objectFit: "cover"
+              }}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                target.nextElementSibling!.textContent = fullName[0]?.toUpperCase() || "U";
+              }}
+            />
+          ) : null}
+          <span style={{ 
+            display: firstPhotoUrl ? 'none' : 'block',
+            fontSize: "20px",
+            fontWeight: "600"
+          }}>
+            {fullName[0]?.toUpperCase() || "U"}
+          </span>
+        </div>
         <div style={{ flex: 1 }}>
           <h3 style={styles.studentName}>{fullName}</h3>
           <p style={styles.studentId}>Reg: {registerNumber}</p>
@@ -485,7 +517,9 @@ const StudentCard = ({
             </p>
           )}
         </div>
-        <div style={styles.expandIcon}>{isExpanded ? "🔽" : "▶️"}</div>
+        <div style={styles.expandIcon}>
+          {isExpanded ? "🔽" : "▶️"}
+        </div>
       </div>
 
       {isExpanded && (
@@ -519,9 +553,7 @@ const StudentCard = ({
           <div style={styles.detailRow}>
             <span style={styles.detailLabel}>Aadhar No</span>
             <span style={styles.detailValue}>
-              {student[COLUMNS.AADHAR_NUMBER]
-                ? encryptAadhar(student[COLUMNS.AADHAR_NUMBER])
-                : "-"}
+              {student[COLUMNS.AADHAR_NUMBER] ? encryptAadhar(student[COLUMNS.AADHAR_NUMBER]) : "-"}
             </span>
           </div>
 
@@ -535,9 +567,7 @@ const StudentCard = ({
           </div>
           <div style={styles.detailRow}>
             <span style={styles.detailLabel}>Current CGPA</span>
-            <span style={styles.detailValue}>
-              {student[COLUMNS.CGPA] || "-"}
-            </span>
+            <span style={styles.detailValue}>{student[COLUMNS.CGPA] || "-"}</span>
           </div>
           <div style={styles.detailRow}>
             <span style={styles.detailLabel}>10th %</span>
@@ -592,8 +622,8 @@ const StudentCard = ({
             <span style={styles.detailLabel}>LinkedIn</span>
             <span style={styles.detailValue}>
               {linkedinProfile ? (
-                <span
-                  style={styles.link}
+                <span 
+                  style={styles.link} 
                   onClick={(e) => {
                     e.stopPropagation();
                     handleLinkedinClick();
@@ -601,9 +631,7 @@ const StudentCard = ({
                 >
                   View Profile
                 </span>
-              ) : (
-                "-"
-              )}
+              ) : "-"}
             </span>
           </div>
 
@@ -670,8 +698,8 @@ const StudentCard = ({
             <span style={styles.detailLabel}>GPS Location</span>
             <span style={styles.detailValue}>
               {gpsLocation ? (
-                <span
-                  style={styles.link}
+                <span 
+                  style={styles.link} 
                   onClick={(e) => {
                     e.stopPropagation();
                     handleGpsClick();
@@ -679,9 +707,7 @@ const StudentCard = ({
                 >
                   View on Map
                 </span>
-              ) : (
-                "-"
-              )}
+              ) : "-"}
             </span>
           </div>
 
@@ -709,22 +735,25 @@ const StudentCard = ({
             <>
               <div style={styles.sectionTitle}>📸 Photos</div>
               <div style={styles.detailRow}>
-                <span style={styles.detailLabel}>
-                  Photos ({photoUrls.length})
-                </span>
+                <span style={styles.detailLabel}>Photos ({photoUrls.length}):</span>
                 <span style={styles.detailValue}>
                   {photoUrls.map((photoUrl, index) => (
                     <span key={index}>
-                      <span
-                        style={{ ...styles.link, marginRight: "8px" }}
+                      <span 
+                        style={{
+                          color: "#667eea",
+                          textDecoration: "underline",
+                          cursor: "pointer",
+                          marginRight: '8px'
+                        }} 
                         onClick={(e) => {
                           e.stopPropagation();
                           handlePhotoClick(photoUrl);
                         }}
                       >
-                        Photo {index + 1}
+                        View Photo {index + 1}
                       </span>
-                      {index < photoUrls.length - 1 && " | "}
+                      {index < photoUrls.length - 1 && ' | '}
                     </span>
                   ))}
                 </span>
@@ -802,6 +831,7 @@ export default function Dashboard() {
     degree: "",
     class: "",
     community: "",
+    city: "",
   });
   const [searchName, setSearchName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -810,6 +840,7 @@ export default function Dashboard() {
   const [passwordInput, setPasswordInput] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
+  const [currentView, setCurrentView] = useState<'dashboard' | 'academic' | 'cgpa'>('dashboard');
 
   const loadData = async () => {
     if (!isAdmin) return;
@@ -857,6 +888,7 @@ export default function Dashboard() {
       const degree = (row[COLUMNS.DEGREE] || "").toLowerCase();
       const classSection = (row[COLUMNS.CLASS_SECTION] || "").toLowerCase();
       const community = (row[COLUMNS.COMMUNITY] || "").toLowerCase();
+      const city = (row[COLUMNS.CITY_NAME] || "").toLowerCase();
       const fullName = (row[COLUMNS.FULL_NAME] || "").toLowerCase();
 
       return (
@@ -865,6 +897,7 @@ export default function Dashboard() {
           classSection.includes(filters.class.toLowerCase())) &&
         (!filters.community ||
           community.includes(filters.community.toLowerCase())) &&
+        (!filters.city || city.includes(filters.city.toLowerCase())) &&
         (!searchName || fullName.includes(searchName.toLowerCase()))
       );
     });
@@ -882,10 +915,19 @@ export default function Dashboard() {
     );
   }
 
+  if (currentView === 'academic') {
+    return <AcademicDetails onBack={() => setCurrentView('dashboard')} />;
+  }
+
+  if (currentView === 'cgpa') {
+    return <CGPAAnalysis onBack={() => setCurrentView('dashboard')} />;
+  }
+
   const filteredData = filterData(personalData);
   const uniqueDegrees = getUniqueValues(personalData, COLUMNS.DEGREE);
   const uniqueClasses = getUniqueValues(personalData, COLUMNS.CLASS_SECTION);
   const uniqueCommunities = getUniqueValues(personalData, COLUMNS.COMMUNITY);
+  const uniqueCities = getUniqueValues(personalData, COLUMNS.CITY_NAME);
 
   return (
     <div style={styles.dashboardContainer}>
@@ -919,10 +961,32 @@ export default function Dashboard() {
             <h1 style={styles.title}>College Dashboard</h1>
             <p style={styles.subtitle}>Complete Student Management System</p>
           </div>
-          <button onClick={() => setIsAdmin(false)} style={styles.logoutButton}>
-            🔒 Logout
-          </button>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button 
+              onClick={() => setCurrentView('academic')} 
+              style={styles.navButton}
+            >
+              📊 Academic Details
+            </button>
+            <button 
+              onClick={() => setCurrentView('cgpa')} 
+              style={styles.navButton}
+            >
+              📈 CGPA Analysis
+            </button>
+            <button onClick={() => setIsAdmin(false)} style={styles.logoutButton}>
+              🔒 Logout
+            </button>
+          </div>
         </div>
+
+        {/* Charts Section */}
+        {!loading && !error && personalData.length > 0 && (
+          <>
+            <RegionChart data={personalData} />
+            <AccommodationChart data={personalData} />
+          </>
+        )}
 
         {/* Filters */}
         <div style={styles.filtersContainer}>
@@ -995,9 +1059,24 @@ export default function Dashboard() {
               ))}
             </select>
 
+            <select
+              style={styles.select}
+              value={filters.city}
+              onChange={(e) =>
+                setFilters({ ...filters, city: e.target.value })
+              }
+            >
+              <option value="">All Cities</option>
+              {uniqueCities.map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
+
             <button
               onClick={() => {
-                setFilters({ degree: "", class: "", community: "" });
+                setFilters({ degree: "", class: "", community: "", city: "" });
                 setSearchName("");
                 setExpandedCards(new Set());
               }}
@@ -1068,9 +1147,9 @@ export default function Dashboard() {
               ) : (
                 <div style={styles.studentsGrid}>
                   {filteredData.map((student, idx) => (
-                    <StudentCard
-                      key={idx}
-                      student={student}
+                    <StudentCard 
+                      key={idx} 
+                      student={student} 
                       isExpanded={expandedCards.has(idx)}
                       onToggle={() => toggleCardExpansion(idx)}
                     />
